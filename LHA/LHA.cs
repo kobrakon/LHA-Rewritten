@@ -17,13 +17,14 @@ namespace LHA
         private static GameWorld gameWorld;
         private static ManualLogSource logger;
         private static ConfigEntry<float> volume;
-        private static ConfigEntry<float> trigger;
+        private static ConfigEntry<int> trigger;
+
         private void Awake()
         {
             logger = Logger;
             Logger.LogInfo($"LHA: Loading");
-            volume = Config.Bind("LHA Settings", "Set Alert Tone Volume", 1f, new ConfigDescription("How loud or quiet you want the alert tone to be", new AcceptableValueRange<float>(0f, 1f)));
-            trigger = Config.Bind("LHA Settings", "Set Trigger", 1f, new ConfigDescription("At what health value do you want the alert tone to play at", new AcceptableValueRange<float>(0f, 440f)));
+            volume = Config.Bind("LHA Settings", "Set Alert Tone Volume", 1f, new ConfigDescription("What volume the alert tone should play at", new AcceptableValueRange<float>(0f, 1f)));
+            trigger = Config.Bind("LHA Settings", "Set Trigger", 1, new ConfigDescription("The health value you want the alert tone to play at", new AcceptableValueRange<int>(0, 440)));
 
             Hook = new GameObject("LHA");
             Hook.AddComponent<LHAController>();
@@ -48,6 +49,7 @@ namespace LHA
                     }
                     else if (Current() > trigger.Value) playerAudioSource.Stop();
                 }
+                else if (playerAudioSource.isPlaying) playerAudioSource.Stop();
             }
 
             public static async void RequestAudio()
@@ -73,8 +75,9 @@ namespace LHA
                     playerAudioSource.loop = true;
                 }
             }
-            bool Ready() => Singleton<GameWorld>.Instantiated && gameWorld.AllPlayers != null && gameWorld.AllPlayers.Count > 0 && gameWorld.AllPlayers[0] is Player ? true : false;
-            float Current() => Ready() ? gameWorld.AllPlayers[0].HealthController.GetBodyPartHealth(EBodyPart.Common).Current : 9999f; // bullshit floating point number go
+            
+            bool Ready() => !Singleton<GameWorld>.Instantiated || gameWorld.MainPlayer == null || gameWorld.AllAlivePlayersList.Count <= 0 || gameWorld.MainPlayer is HideoutPlayer ? false : true;
+            float Current() => Ready() ? gameWorld.MainPlayer.HealthController.GetBodyPartHealth(EBodyPart.Common).Current : 9999f; // bullshit floating point number go
         }
     }
 }
